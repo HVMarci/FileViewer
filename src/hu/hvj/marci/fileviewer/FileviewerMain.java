@@ -13,10 +13,10 @@ public class FileViewerMain {
 			return;
 		}
 
-//		File file = new File(args[0]);
+		File file = new File(args[0]);
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\sample_5184×3456.ico");
-		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
+//		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
 		if (!file.exists()) {
 			System.err.println("Ez a fájl nem létezik!");
 			return;
