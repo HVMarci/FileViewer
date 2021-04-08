@@ -16,7 +16,7 @@ public class FileViewerMain {
 			return;
 		}
 
-		File file = new File(args[0]);
+		File file = new File(String.join(" ", args));
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
 //		File file = new File("C:\\Users\\marci\\OneDrive\\Pictures\\j-s billentyűzet másolata.png");
 //		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
