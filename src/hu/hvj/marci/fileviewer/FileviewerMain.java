@@ -1,7 +1,10 @@
 package hu.hvj.marci.fileviewer;
 
+import static hu.hvj.marci.fileviewer.Forditas.DEFAULT;
 import java.awt.Font;
 import java.io.File;
+
+import javax.swing.JOptionPane;
 
 public class FileViewerMain {
 
@@ -15,14 +18,18 @@ public class FileViewerMain {
 
 		File file = new File(args[0]);
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
-//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\sample_5184×3456.ico");
+//		File file = new File("C:\\Users\\marci\\OneDrive\\Pictures\\j-s billentyűzet másolata.png");
 //		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
 		if (!file.exists()) {
-			System.err.println("Ez a fájl nem létezik!");
+			System.err.println("Ez a fájl nem létezik! " + args[0]);
+			JOptionPane.showMessageDialog(null, "Ez a fájl nem létezik! " + args[0], DEFAULT.getText("error"),
+					JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		if (file.isDirectory()) {
 			System.err.println("Ez egy könyvtár!");
+			JOptionPane.showMessageDialog(null, "Ez egy könyvtár!", DEFAULT.getText("error"),
+					JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
@@ -43,8 +50,12 @@ public class FileViewerMain {
 		String[] ext = filename.split("\\.");
 		if (ext.length > 1) {
 			System.err.println("Nem támogatott fájlkiterjesztés! (." + ext[ext.length - 1] + ")");
+			JOptionPane.showMessageDialog(null, "Nem támogatott fájlkiterjesztés! (." + ext[ext.length - 1] + ")",
+					DEFAULT.getText("error"), JOptionPane.ERROR_MESSAGE);
 		} else {
 			System.err.println("A kiterjesztés nélküli fájlok nem támogatottak!");
+			JOptionPane.showMessageDialog(null, "A kiterjesztés nélküli fájlok nem támogatottak!",
+					DEFAULT.getText("error"), JOptionPane.ERROR_MESSAGE);
 		}
 	}
 
