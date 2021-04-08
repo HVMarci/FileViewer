@@ -161,7 +161,7 @@ public class IcoGui extends JFrame {
 		resize(duplaKatt);
 		duplaKatt.setFont(f);
 		getContentPane().add(duplaKatt);
-		
+
 		String[][] tableData = new String[img.getHeader().getNumberOfImages()][5];
 		for (int i = 0; i < img.getHeader().getNumberOfImages(); i++) {
 			IconDirEntry ide = img.getIconDirEntries()[i];
@@ -248,7 +248,7 @@ public class IcoGui extends JFrame {
 		try {
 			String filename = "tmp" + String.valueOf((int) (Math.random() * 10000000))
 					+ (ide.getFormat() == IconDirEntry.BMP ? ".bmp" : ".png");
-			File file = new File(filename);
+			File file = new File(System.getProperty("user.home") + System.getProperty("file.separator") + filename);
 			file.createNewFile();
 
 			Exporter.export(file, ide, new FileInputStream(this.file));
