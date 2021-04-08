@@ -26,7 +26,7 @@ public class FileViewerMain {
 			return;
 		}
 
-		String filename = file.getName();
+		String filename = file.getName().toLowerCase();
 		for (SupportedFileType t : SupportedFileType.values()) {
 			String[] extensions = t.getExtensions();
 
