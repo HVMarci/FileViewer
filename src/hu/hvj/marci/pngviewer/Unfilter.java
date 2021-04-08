@@ -1,7 +1,7 @@
 package hu.hvj.marci.pngviewer;
 
-import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
 import static hu.hvj.marci.pngviewer.PNGHelper.ai;
+import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
 
 public class Unfilter {
 

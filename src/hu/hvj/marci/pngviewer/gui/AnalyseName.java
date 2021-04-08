@@ -1,10 +1,10 @@
 package hu.hvj.marci.pngviewer.gui;
 
+import java.awt.Font;
 import java.awt.Window;
 
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import java.awt.Font;
 import javax.swing.SwingConstants;
 
 import hu.hvj.marci.pngviewer.BitHelper;

@@ -1,9 +1,9 @@
 package hu.hvj.marci.pngviewer.chunks.ancillary;
 
-import hu.hvj.marci.pngviewer.chunks.Chunk;
 import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
 
 import hu.hvj.marci.pngviewer.ISO88591;
+import hu.hvj.marci.pngviewer.chunks.Chunk;
 
 public class ICCP extends Chunk {
 

@@ -1,7 +1,7 @@
 package hu.hvj.marci.pngviewer.chunks.critical;
 
-import static hu.hvj.marci.pngviewer.PNGViewer.LS;
 import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
+import static hu.hvj.marci.pngviewer.PNGViewer.LS;
 
 import hu.hvj.marci.pngviewer.PNGHelper;
 import hu.hvj.marci.pngviewer.chunks.Chunk;

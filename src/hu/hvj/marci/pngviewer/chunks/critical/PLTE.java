@@ -1,8 +1,8 @@
 package hu.hvj.marci.pngviewer.chunks.critical;
 
-import java.awt.Color;
-
 import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
+
+import java.awt.Color;
 
 import hu.hvj.marci.pngviewer.chunks.Chunk;
 

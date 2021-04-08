@@ -1,8 +1,11 @@
 package hu.hvj.marci.fileviewer;
 
+import java.awt.Font;
 import java.io.File;
 
-public class FileviewerMain {
+public class FileViewerMain {
+
+	public static final Font font = new Font("Times New Roman", Font.PLAIN, 20);
 
 	public static void main(String[] args) throws Exception {
 		if (args.length < 1) {
@@ -11,7 +14,9 @@ public class FileviewerMain {
 		}
 
 //		File file = new File(args[0]);
-		File file = new File("C:\\Users\\marci\\java_erdekessegek\\GZReader\\gunzip.c.gz");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\sample_5184×3456.ico");
+		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
 		if (!file.exists()) {
 			System.err.println("Ez a fájl nem létezik!");
 			return;
@@ -23,11 +28,15 @@ public class FileviewerMain {
 
 		String filename = file.getName();
 		for (SupportedFileType t : SupportedFileType.values()) {
-			if (filename.endsWith(t.getExtension())) {
-				Class<? extends Main> main = t.getMainClass();
-				Main m = main.newInstance();
-				m.main(file);
-				return;
+			String[] extensions = t.getExtensions();
+
+			for (String s : extensions) {
+				if (filename.endsWith(s)) {
+					Class<? extends Main> main = t.getMainClass();
+					Main m = main.newInstance();
+					m.main(file);
+					return;
+				}
 			}
 		}
 

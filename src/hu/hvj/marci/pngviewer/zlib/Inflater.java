@@ -1,11 +1,17 @@
 package hu.hvj.marci.pngviewer.zlib;
 
+import static hu.hvj.marci.pngviewer.BitHelper.booleansToBytes;
+import static hu.hvj.marci.pngviewer.BitHelper.bytesToBooleans;
+import static hu.hvj.marci.pngviewer.BitHelper.rbiba;
+import static hu.hvj.marci.pngviewer.PNGHelper.byteAlsToArray;
+import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
+import static hu.hvj.marci.pngviewer.PNGHelper.rotateBytes;
+import static hu.hvj.marci.pngviewer.PNGHelper.twoBitsToInt;
+import static hu.hvj.marci.pngviewer.PNGHelper.twoBytesToIntLSBFirst;
+
 import java.util.ArrayList;
 
 import hu.hvj.marci.pngviewer.Logger;
-
-import static hu.hvj.marci.pngviewer.PNGHelper.*;
-import static hu.hvj.marci.pngviewer.BitHelper.*;
 
 public class Inflater {
 

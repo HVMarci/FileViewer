@@ -1,5 +1,7 @@
 package hu.hvj.marci.pngviewer;
 
+import static hu.hvj.marci.pngviewer.PNGHelper.fourBytesToIntMSBFirst;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -7,8 +9,6 @@ import java.lang.reflect.InvocationTargetException;
 import hu.hvj.marci.pngviewer.chunks.Chunk;
 import hu.hvj.marci.pngviewer.chunks.ChunkTypes;
 import hu.hvj.marci.pngviewer.chunks.UnknownChunk;
-
-import static hu.hvj.marci.pngviewer.PNGHelper.fourBytesToIntMSBFirst;
 
 public class PNGReader {
 

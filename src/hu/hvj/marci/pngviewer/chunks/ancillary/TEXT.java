@@ -1,8 +1,9 @@
 package hu.hvj.marci.pngviewer.chunks.ancillary;
 
+import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
+
 import hu.hvj.marci.pngviewer.ISO88591;
 import hu.hvj.marci.pngviewer.chunks.Chunk;
-import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
 
 public class TEXT extends Chunk {
 

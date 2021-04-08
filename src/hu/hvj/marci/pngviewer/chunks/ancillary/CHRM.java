@@ -1,9 +1,10 @@
 package hu.hvj.marci.pngviewer.chunks.ancillary;
 
-import hu.hvj.marci.pngviewer.chunks.Chunk;
+import static hu.hvj.marci.pngviewer.PNGHelper.format;
 import static hu.hvj.marci.pngviewer.PNGHelper.fourBytesToIntMSBFirst;
 import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
-import static hu.hvj.marci.pngviewer.PNGHelper.format;
+
+import hu.hvj.marci.pngviewer.chunks.Chunk;
 
 public class CHRM extends Chunk {
 

@@ -1,15 +1,14 @@
 package hu.hvj.marci.pngviewer.chunks.ancillary;
 
-import hu.hvj.marci.pngviewer.chunks.Chunk;
-import hu.hvj.marci.pngviewer.chunks.critical.PLTE;
-import hu.hvj.marci.pngviewer.exceptions.InvalidChunkLengthException;
-import hu.hvj.marci.pngviewer.exceptions.MissingPaletteException;
-
+import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
 import static hu.hvj.marci.pngviewer.PNGHelper.twoBytesToIntMSBFirst;
 
 import java.awt.Color;
 
-import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
+import hu.hvj.marci.pngviewer.chunks.Chunk;
+import hu.hvj.marci.pngviewer.chunks.critical.PLTE;
+import hu.hvj.marci.pngviewer.exceptions.InvalidChunkLengthException;
+import hu.hvj.marci.pngviewer.exceptions.MissingPaletteException;
 
 public class BKGD extends Chunk {
 

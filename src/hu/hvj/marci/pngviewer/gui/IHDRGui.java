@@ -1,12 +1,12 @@
 package hu.hvj.marci.pngviewer.gui;
 
+import java.awt.Font;
+import java.awt.Window;
+
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 
 import hu.hvj.marci.pngviewer.chunks.critical.IHDR;
-
-import java.awt.Font;
-import java.awt.Window;
 
 public class IHDRGui extends JDialog {
 

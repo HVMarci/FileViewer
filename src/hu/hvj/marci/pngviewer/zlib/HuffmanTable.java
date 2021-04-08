@@ -1,12 +1,12 @@
 package hu.hvj.marci.pngviewer.zlib;
 
-import java.util.HashMap;
-
-import hu.hvj.marci.pngviewer.Logger;
-
 import static hu.hvj.marci.pngviewer.BitHelper.binaryToDecimal;
 import static hu.hvj.marci.pngviewer.BitHelper.rb;
 import static hu.hvj.marci.pngviewer.PNGHelper.getArrayPart;
+
+import java.util.HashMap;
+
+import hu.hvj.marci.pngviewer.Logger;
 
 public class HuffmanTable {
 

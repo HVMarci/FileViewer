@@ -107,7 +107,6 @@ public class Table extends JTable {
 		Logger.debug("Table.mouseListener.mouseClicked", getRowName(row), 2);
 		if (column == 1) {
 			new AnalyseName(getRowName(row), this.parent).setVisible(true);
-			;
 		} else {
 			switch (getRowName(row)) {
 			case "IHDR":

@@ -1,11 +1,14 @@
 package hu.hvj.marci.gzreader;
 
-import javax.swing.JFrame;
-import javax.swing.JLabel;
 import java.awt.Font;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+
+import hu.hvj.marci.fileviewer.FileViewerMain;
 
 public class GZGui extends JFrame {
 
@@ -20,7 +23,7 @@ public class GZGui extends JFrame {
 		setSize(800, 600);
 		getContentPane().setLayout(null);
 
-		Font font = new Font("Times New Roman", Font.PLAIN, 20);
+		Font font = FileViewerMain.font;
 
 		JLabel filename = new JLabel("Fájlnév: " + gz.getFilename());
 		filename.setFont(font);

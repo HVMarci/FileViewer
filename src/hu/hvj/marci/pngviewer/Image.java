@@ -1,12 +1,12 @@
 package hu.hvj.marci.pngviewer;
 
+import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -18,8 +18,6 @@ import hu.hvj.marci.pngviewer.chunks.critical.IHDR;
 import hu.hvj.marci.pngviewer.chunks.critical.PLTE;
 import hu.hvj.marci.pngviewer.exceptions.MissingPaletteException;
 import hu.hvj.marci.pngviewer.zlib.ZLib;
-
-import static hu.hvj.marci.pngviewer.PNGHelper.btpi;
 
 public class Image extends Component {
 
