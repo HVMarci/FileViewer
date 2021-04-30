@@ -10,20 +10,31 @@ public class FileViewerMain {
 
 	public static final Font font = new Font("Times New Roman", Font.PLAIN, 20);
 
+	public static void main1(String[] args) {
+		System.out.printf("0x%04X%n0x%04X%n", ~0x352B & 0xFFFF, ~0x8001 & 0xFFFF);
+	}
+
 	public static void main(String[] args) throws Exception {
 		if (args.length < 1) {
 			System.err.println("Kevés az argumentum!");
 			return;
 		}
 
-		File file = new File(String.join(" ", args));
+//		File file = new File(String.join(" ", args));
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
 //		File file = new File("C:\\Users\\marci\\OneDrive\\Pictures\\j-s billentyűzet másolata.png");
 //		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\PNGSuite\\basi0g04.png");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\hell.png");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\SzenHidrogen\\gifek\\1.gif");
+//		File file = new File("C:\\Users\\marci\\Downloads\\basn0g01.gif");
+//		File file = new File("C:\\HashiCorp\\256x256.png.gz");
+//		File file = new File("C:\\HashiCorp\\eclipse-inst-win64.exe.gz");
+		File file = new File("C:\\HashiCorp\\gzip\\arduino-1.8.13-windows.exe.gz");
 		if (!file.exists()) {
-			System.err.println("Ez a fájl nem létezik! " + args[0]);
-			JOptionPane.showMessageDialog(null, "Ez a fájl nem létezik! " + args[0], DEFAULT.getText("error"),
-					JOptionPane.ERROR_MESSAGE);
+			System.err.println("Ez a fájl nem létezik! " + file.getAbsolutePath());
+			JOptionPane.showMessageDialog(null, "Ez a fájl nem létezik! " + file.getAbsolutePath(),
+					DEFAULT.getText("error"), JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		if (file.isDirectory()) {
@@ -58,5 +69,4 @@ public class FileViewerMain {
 					DEFAULT.getText("error"), JOptionPane.ERROR_MESSAGE);
 		}
 	}
-
 }

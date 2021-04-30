@@ -164,7 +164,8 @@ public class ZLib {
 		byte[] decompressedData = Inflater.decompress(compressedData);
 		boolean validAdler32 = checkADLER32(decompressedData, getADLER32(zlibStream));
 		for (int i = 0; i < decompressedData.length; i++) {
-			Logger.info("ZLib.decompress", String.format("%" + String.valueOf(decompressedData.length).length() + "d: 0x%02X", i, decompressedData[i]));
+			Logger.info("ZLib.decompress", String.format(
+					"%" + String.valueOf(decompressedData.length).length() + "d: 0x%02X", i, decompressedData[i]));
 		}
 
 		if (!validAdler32) {
@@ -177,5 +178,26 @@ public class ZLib {
 
 		return decompressedData;
 	}
+
+//	public static byte[] decompress(InputStream is) throws IOException {
+//		hu.hvj.marci.gzreader.Inflater inflater = new hu.hvj.marci.gzreader.Inflater();
+//		byte[] buf = new byte[2];
+//		is.read(buf);
+//		if (hasDICTID(buf)) {
+//			is.skip(4);
+//		}
+//		byte[] r = inflater.inflate(is);
+//
+//		byte[] buf4 = new byte[4];
+//		is.read(buf4);
+//		int adler32 = PNGHelper.fourBytesToIntMSBFirst(buf4), realAdler32 = Adler32.checksum(r);
+//		if (realAdler32 != adler32) {
+//			System.err.printf("Az ADLER32 hibás! (jelenlegi: 0x%08X, helyes: 0x%08X)%n", adler32, realAdler32);
+//		} else {
+//			Logger.info("ZLib.decompress", "Helyes ADLER32!");
+//		}
+//
+//		return r;
+//	}
 
 }

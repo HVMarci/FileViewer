@@ -1,14 +1,23 @@
 package hu.hvj.marci.gzreader;
 
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 import hu.hvj.marci.fileviewer.FileViewerMain;
+import hu.hvj.marci.fileviewer.Forditas;
 
 public class GZGui extends JFrame {
 
@@ -17,10 +26,40 @@ public class GZGui extends JFrame {
 	 */
 	private static final long serialVersionUID = 7331702592310606046L;
 	private int yCounter = 25;
+	private final GZip gz;
+
+	private class ExportListener implements ActionListener {
+		private final GZGui parent;
+
+		public ExportListener(GZGui parent) {
+			this.parent = parent;
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			try {
+				JFileChooser jfc = new JFileChooser();
+				jfc.setSelectedFile(new File(parent.getGZ().getOriginalFilename()));
+				int state = jfc.showSaveDialog(parent);
+				if (state == JFileChooser.APPROVE_OPTION) {
+					File output = jfc.getSelectedFile();
+					output.createNewFile();
+					FileOutputStream os = new FileOutputStream(output);
+					os.write(parent.getGZ().getDecompressedData());
+					os.close();
+					JOptionPane.showMessageDialog(parent, "A kitömörítés sikeres!");
+				}
+			} catch (IOException ex) {
+				JOptionPane.showMessageDialog(parent, ex.getClass().getName() + ": " + ex.getMessage(), Forditas.DEFAULT.getText("error"),
+						JOptionPane.ERROR_MESSAGE);
+				ex.printStackTrace();
+			}
+		}
+	}
 
 	public GZGui(GZip gz) throws IOException {
 		super("GZip reader");
-		setSize(800, 600);
+		this.gz = gz;
 		getContentPane().setLayout(null);
 
 		Font font = FileViewerMain.font;
@@ -109,12 +148,15 @@ public class GZGui extends JFrame {
 		resize(blockType3);
 		getContentPane().add(blockType3);
 
-		JLabel crc32 = new JLabel(String.format("Az ellenőrző CRC-32: 0x%08X", gz.getCRC32()));
+		JLabel crc32 = new JLabel(String.format(
+				"Az ellenőrző CRC-32: 0x%08X" + (gz.isCRC32OK() ? " (helyes)" : " (helytelen, jó: 0x%08X)"),
+				gz.getCRC32(), gz.goodCRC()));
 		crc32.setFont(font);
 		resize(crc32);
 		getContentPane().add(crc32);
 
-		JLabel timestamp = new JLabel("A tömörített fájl utolsó módosításásának az ideje: " + gz.getLastModificationTime());
+		JLabel timestamp = new JLabel(
+				"A tömörített fájl utolsó módosításásának az ideje: " + gz.getLastModificationTime());
 		timestamp.setFont(font);
 		resize(timestamp);
 		getContentPane().add(timestamp);
@@ -133,11 +175,27 @@ public class GZGui extends JFrame {
 			getContentPane().add(extra);
 		}
 
+		yCounter += 15;
+
+		JButton extract = new JButton("Kitömörítés ide...");
+		extract.setFont(font);
+		extract.setBounds(210, yCounter, 200, 24);
+		yCounter += 25;
+		getContentPane().add(extract);
+		extract.addActionListener(new ExportListener(this));
+
+		getContentPane().setPreferredSize(new Dimension(800, yCounter + 25));
+		pack();
+
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
 	public void resize(JLabel label) {
 		label.setBounds(26, yCounter, 733, 24);
 		yCounter += 25;
+	}
+
+	public GZip getGZ() {
+		return gz;
 	}
 }

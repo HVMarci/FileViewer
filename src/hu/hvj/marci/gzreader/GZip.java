@@ -3,11 +3,15 @@ package hu.hvj.marci.gzreader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
+
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+
+import hu.hvj.marci.fileviewer.Forditas;
+import hu.hvj.marci.global.Reader;
 
 public class GZip {
 
@@ -33,15 +37,20 @@ public class GZip {
 	private final boolean ftext, fhcrc, fextra, fname, fcomment;
 	private final byte cm, flg, xfl, os;
 	private final short crc16;
-	private final int xlen, crc32, isize;
+	private final int xlen, crc32, goodCRC32, isize;
 	private final ExtraField extraField;
 	private final Date mtime;
 	private final String filename, originalFilename, comment;
 	private final byte[] decompressedData;
 	private final Inflater inflater;
 	private final File file;
+	private final boolean crc32ok;
 
-	public GZip(InputStream is, File file) throws IOException {
+	public GZip(Reader is, File file) throws IOException {
+		this(is, file, null);
+	}
+
+	public GZip(Reader is, File file, JLabel txt) throws IOException {
 		this.filename = file.getName();
 		this.file = file;
 		// ArrayList<Byte> alsForCRC16 = new ArrayList<Byte>();
@@ -50,7 +59,11 @@ public class GZip {
 		if (ids[0] == ID1 && ids[1] == ID2) {
 			System.out.println("Az ID1 és az ID2 bájt helyes.");
 		} else {
-			System.err.println("Az ID1 és/vagy az ID2 bájt hibás! " + Arrays.toString(ids));
+			System.err.println("Az ID1 és/vagy az ID2 bájt hibás! {" + ids[0] + ", " + ids[1] + "}");
+			if (JOptionPane.showConfirmDialog(null, "A fájl nem GZip arhívum! Biztosan folytatja?",
+					Forditas.DEFAULT.getText("error"), JOptionPane.YES_NO_OPTION) == JOptionPane.NO_OPTION) {
+				System.exit(-1);
+			}
 		}
 
 		is.read(ids);
@@ -108,23 +121,21 @@ public class GZip {
 		}
 
 		if (this.fhcrc) {
-			byte[] buf = new byte[2];
-			is.read(buf);
-			this.crc16 = (short) Helper.twoBytesToIntLSBFirst(buf);
+			is.read(ids);
+			this.crc16 = (short) Helper.twoBytesToIntLSBFirst(ids[0], ids[1]);
 			// TODO check CRC-16
 		} else {
 			this.crc16 = 0;
 		}
 
 		this.inflater = new Inflater();
-		this.decompressedData = inflater.inflate(is);
+		this.decompressedData = inflater.inflate(is, txt);
 
 		byte[] buf = new byte[4];
 		is.read(buf);
 		this.crc32 = Helper.fourBytesToIntLSBFirst(buf);
-		if (this.crc32 != CRC.crc32(this.decompressedData)) {
-			System.err.println("Hibás CRC32!");
-		}
+		this.goodCRC32 = CRC.crc32(decompressedData);
+		this.crc32ok = this.crc32 == this.goodCRC32;
 
 		is.read(buf);
 		this.isize = Helper.fourBytesToIntLSBFirst(buf);
@@ -202,11 +213,11 @@ public class GZip {
 		}
 		f.createNewFile();
 		FileOutputStream fos = new FileOutputStream(f);
-		fos.write(this.decompressedData);
+		fos.write(decompressedData);
 		fos.close();
 	}
 
-	public static String readOriginalFilename(InputStream is) throws IOException {
+	public static String readOriginalFilename(Reader is) throws IOException {
 		ArrayList<Byte> als = new ArrayList<Byte>();
 		byte[] buf = new byte[1];
 		do {
@@ -222,7 +233,7 @@ public class GZip {
 		return new String(name, Charset.forName("ISO-8859-1"));
 	}
 
-	public static String readComment(InputStream is) throws IOException {
+	public static String readComment(Reader is) throws IOException {
 		return readOriginalFilename(is);
 	}
 
@@ -345,13 +356,25 @@ public class GZip {
 	public int getOS() {
 		return (int) this.os & 0xFF;
 	}
-	
+
 	public int getXLEN() {
 		return this.xlen;
 	}
-	
+
 	public Date getMTIME() {
 		return this.mtime;
+	}
+
+	public boolean isCRC32OK() {
+		return this.crc32ok;
+	}
+	
+	public int goodCRC() {
+		return this.goodCRC32;
+	}
+
+	public byte[] getDecompressedData() {
+		return this.decompressedData;
 	}
 
 }

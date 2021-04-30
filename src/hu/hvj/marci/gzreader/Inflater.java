@@ -1,8 +1,12 @@
 package hu.hvj.marci.gzreader;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+
+import javax.swing.JLabel;
+
+import hu.hvj.marci.global.Reader;
 
 public class Inflater {
 
@@ -14,19 +18,29 @@ public class Inflater {
 	private int blockCount;
 	private int[] blockTypes;
 
-	public byte[] inflate(InputStream is) throws IOException {
-		ArrayList<Byte> als = new ArrayList<Byte>();
-		BooleanArrayList bals = new BooleanArrayList();
-		byte[] buf = new byte[1];
+	public byte[] inflate(Reader is) throws IOException {
+		return inflate(is, null);
+	}
 
+	public byte[] inflate(Reader is, JLabel txt) throws IOException {
+		long start = System.currentTimeMillis();
+		ArrayList<Byte> als = new ArrayList<Byte>();
+		MyBitSet bals = new MyBitSet();
 		boolean isLastBlock;
 		this.blockCount = 0;
 		this.blockTypes = new int[3];
+		byte b;
 		do {
-			is.read(buf);
-			addBitsToAls(bals, buf);
+			/*
+			 * if (blockCount == 139) { System.out.println("139");
+			 * System.out.println("bals.size() = " + bals.size()); break; }
+			 */
+			if (bals.size() < 3) {
+				b = is.read();
+				bals.add(b);
+			}
 			isLastBlock = bals.getLast();
-			int compressionMethod = bals.getNextTwoBitInteger();
+			int compressionMethod = bals.getNextXBitIntegerLSBFirst(2);
 			String tomoritesiMetodus;
 			this.blockTypes[compressionMethod]++;
 			switch (compressionMethod) {
@@ -45,12 +59,15 @@ public class Inflater {
 			}
 			System.out.printf("Blokk %d megkezdve (%s, tömörítési mód: %s)%n", ++this.blockCount,
 					isLastBlock ? "utolsó" : "nem utolsó", tomoritesiMetodus);
+			if (txt != null) {
+				txt.setText(this.blockCount + ". blokk feldolgozása");
+			}
 			if (compressionMethod == STORED) {
 				bals.nextByte();
 				if (bals.size() < 32) {
-					buf = new byte[4];
+					byte[] buf = new byte[4];
 					is.read(buf);
-					addBitsToAls(bals, buf);
+					bals.add(buf);
 					int len = bals.getNextXBitIntegerLSBFirst(16);
 					int nlen = bals.getNextXBitIntegerLSBFirst(16);
 					System.out.println("  hossz: " + len);
@@ -60,14 +77,16 @@ public class Inflater {
 					} else {
 						System.out.printf("Az NLEN helyes! (LEN: 0x%04X, NLEN: 0x%04X)%n", len, nlen);
 					}
-					len -= bals.size() / 8;
-					while (bals.size() > 0) {
+					int minusz = (bals.size() / 8) <= len ? bals.size() / 8 : len;
+					len -= minusz;
+					while (minusz > 0) {
 						als.add(bals.getNextByte());
+						minusz--;
 					}
 					byte[] sbuf = new byte[len];
 					is.read(sbuf);
-					for (byte b : sbuf) {
-						als.add(b);
+					for (int i = 0; i < len; i++) {
+						als.add(sbuf[i]);
 					}
 				}
 			} else {
@@ -77,51 +96,64 @@ public class Inflater {
 				} else {
 					huffman = HuffmanCode.STATIC_HUFFMAN_TABLE;
 				}
+
+				Arrays.sort(huffman.literal);
+				Arrays.sort(huffman.dist);
+
+				int[] litLengths = HuffmanCode.getLengthStartArray(huffman.literal);
+				int[] distLengths = HuffmanCode.getLengthStartArray(huffman.dist);
+				int[] litLengthsEnd = HuffmanCode.getLengthEndArray(huffman.literal);
+				int[] distLengthsEnd = HuffmanCode.getLengthEndArray(huffman.dist);
+
 				while (true) {
+					/*
+					 * if (als.size() >= 4688342) { System.out.println("6E"); }
+					 */
 					int val = 0, len = 0;
-					while (HuffmanCode.needBits(val, len, huffman.literal)) {
+					while (HuffmanCode.needBits(val, len, huffman.literal, litLengths[len], litLengthsEnd[len])) {
 						if (bals.size() < 1) {
-							buf = new byte[1];
-							is.read(buf);
-							Inflater.addBitsToAls(bals, buf);
+							b = is.read();
+							bals.add(b);
 						}
 						val <<= 1;
-						val |= bals.getLast() ? 1 : 0;
+						val |= bals.getLastBit();
 						len++;
 					}
-					int decodedVal = HuffmanCode.getValue(val, len, huffman.literal);
+					int decodedVal = HuffmanCode.getValue(val, len, huffman.literal, litLengths[len],
+							litLengthsEnd[len]);
 					if (decodedVal < 256) {
 						als.add((byte) decodedVal);
 					} else if (decodedVal >= 257 && decodedVal <= 285) {
 						int lenExtraBitCount = lengthExtraBits(decodedVal);
 						if (bals.size() < lenExtraBitCount) {
-							buf = new byte[(int) Math.ceil(lenExtraBitCount / 8.)];
-							is.read(buf);
-							Inflater.addBitsToAls(bals, buf);
+							byte[] bb = new byte[(int) Math.ceil(lenExtraBitCount / 8.)];
+							is.read(bb);
+							bals.add(bb);
 						}
 						int lenExtraBits = bals.getNextXBitIntegerLSBFirst(lenExtraBitCount);
 						int keszlen = lengthValue(decodedVal, lenExtraBits);
 
 						int dval = 0, dlen = 0;
-						while (HuffmanCode.needBits(dval, dlen, huffman.dist)) {
+						while (HuffmanCode.needBits(dval, dlen, huffman.dist, distLengths[dlen],
+								distLengthsEnd[dlen])) {
 							if (bals.size() < 1) {
-								buf = new byte[1];
-								is.read(buf);
-								Inflater.addBitsToAls(bals, buf);
+								b = is.read();
+								bals.add(b);
 							}
 							dval <<= 1;
-							dval |= bals.getLast() ? 1 : 0;
+							dval |= bals.getLastBit();
 							dlen++;
 						}
-						int decodedDist = HuffmanCode.getValue(dval, dlen, huffman.dist);
+						int decodedDist = HuffmanCode.getValue(dval, dlen, huffman.dist, distLengths[dlen],
+								distLengthsEnd[dlen]);
 						int distExtraBitCount = distExtraBits(decodedDist);
 						if (distExtraBitCount == -1) {
 							System.err.printf("Hiba! decodedDist = %d%n", decodedDist);
 						}
 						if (bals.size() < distExtraBitCount) {
-							buf = new byte[(int) Math.ceil(distExtraBitCount / 8.)];
-							is.read(buf);
-							Inflater.addBitsToAls(bals, buf);
+							byte[] bb = new byte[(int) Math.ceil(distExtraBitCount / 8.)];
+							is.read(bb);
+							bals.add(bb);
 						}
 						int distExtraBits = bals.getNextXBitIntegerLSBFirst(distExtraBitCount);
 						int dist = distValue(decodedDist, distExtraBits);
@@ -141,24 +173,13 @@ public class Inflater {
 				}
 			}
 		} while (!isLastBlock);
-
-		byte[] r = new byte[als.size()];
-		for (int i = 0; i < r.length; i++) {
-			r[i] = als.get(i);
+		System.out.printf("%f másodperc alatt kész!%n", (System.currentTimeMillis() - start) / 1000.);
+		
+		byte[] output = new byte[als.size()];
+		for (int i = 0; i < als.size(); i++) {
+			output[i] = als.get(i);
 		}
-		return r;
-	}
-
-	public static void addBitsToAls(ArrayList<Boolean> als, byte[] buf) {
-		ArrayList<Boolean> tmp = new ArrayList<Boolean>();
-		als.forEach(i -> tmp.add(i));
-		als.clear();
-		for (int i = buf.length - 1; i >= 0; i--) {
-			for (boolean bo : Helper.byteToBooleansMSBFirst(buf[i])) {
-				als.add(new Boolean(bo));
-			}
-		}
-		tmp.forEach(i -> als.add(i));
+		return output;
 	}
 
 	public static int lengthExtraBits(int length) {
@@ -234,8 +255,7 @@ public class Inflater {
 		} else if (dist == 4) {
 			return 6;
 		} else {
-			int elozo = distUpperBound(dist - 1);
-			return (int) Math.pow(2, distExtraBits(dist)) + elozo;
+			return (1 << distExtraBits(dist)) + distUpperBound(dist - 1);
 		}
 	}
 
@@ -244,7 +264,7 @@ public class Inflater {
 	}
 
 	public int[] getBlockTypes() {
-		return this.blockTypes.clone();
+		return this.blockTypes;
 	}
 
 	public int getBlockTypeCount(int type) {

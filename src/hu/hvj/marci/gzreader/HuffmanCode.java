@@ -1,19 +1,41 @@
 package hu.hvj.marci.gzreader;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.Arrays;
+
+import hu.hvj.marci.global.Reader;
 
 public class HuffmanCode {
-	static class HuffmanNode {
-		int len, code;
+	static class HuffmanNode implements Comparable<HuffmanNode> {
+		int len, code, index;
 
-		public HuffmanNode(int len) {
+		public HuffmanNode(int len, int index) {
 			this.len = len;
+			this.index = index;
 		}
-		
+
 		@Override
 		public String toString() {
-			return String.format("Length: %d, Code: %s (%d)", this.len, Helper.decimalToBinary(this.code, this.len), this.code);
+//			return String.format("Length: %d, Code: %s (%d)", this.len, Helper.decimalToBinary(this.code, this.len), this.code);
+			return String.format("Index: %d, Length: %d, Code: %s (%d)", this.index, this.len,
+					Helper.decimalToBinary(this.code, this.len), this.code);
+		}
+
+		@Override
+		public int compareTo(HuffmanNode o) {
+			if (this.len < o.len) {
+				return -1;
+			} else if (this.len > o.len) {
+				return 1;
+			} else { // this.len == o.len
+				if (this.code < o.code) {
+					return -1;
+				} else if (this.code > o.code) {
+					return 1;
+				} else { // this.code == o.code
+					return 0;
+				}
+			}
 		}
 	}
 
@@ -27,31 +49,31 @@ public class HuffmanCode {
 
 	public static final HuffmanCode STATIC_HUFFMAN_TABLE = new HuffmanCode();
 
-	public HuffmanCode(BooleanArrayList als, InputStream is) throws IOException {
+	public HuffmanCode(MyBitSet als, Reader is) throws IOException {
 		System.out.println("Huffman tábla készítése megkezdve");
 		if (als.size() < 14) {
-			byte[] buf = new byte[14];
-			is.read(buf);
-			Inflater.addBitsToAls(als, buf);
+			byte[] bb = new byte[2];
+			is.read(bb);
+			als.add(bb);
 		}
 		this.hlit = als.getNextXBitIntegerLSBFirst(5) + 257;
 		this.hdist = als.getNextXBitIntegerLSBFirst(5) + 1;
 		this.hclen = als.getNextXBitIntegerLSBFirst(4) + 4;
 
 		if (als.size() < 19) {
-			byte[] buf = new byte[19 * 3];
-			is.read(buf);
-			Inflater.addBitsToAls(als, buf);
+			byte[] bb = new byte[8];
+			is.read(bb);
+			als.add(bb);
 		}
 
-		System.out.print("  Tábla a táblákhoz megkezdve");
+		System.out.println("  Tábla a táblákhoz megkezdve");
 		HuffmanNode[] forHuffmanTables = new HuffmanNode[19];
 		for (int i = 0; i < hclen; i++) {
 			int a = als.getNextXBitIntegerLSBFirst(3);
-			forHuffmanTables[HCLEN_INDEXES[i]] = new HuffmanNode(a);
+			forHuffmanTables[HCLEN_INDEXES[i]] = new HuffmanNode(a, HCLEN_INDEXES[i]);
 		}
 		for (int i = hclen; i < forHuffmanTables.length; i++) {
-			forHuffmanTables[HCLEN_INDEXES[i]] = new HuffmanNode(0);
+			forHuffmanTables[HCLEN_INDEXES[i]] = new HuffmanNode(0, HCLEN_INDEXES[i]);
 		}
 
 		buildHuffmanTree(forHuffmanTables, 7);
@@ -66,9 +88,13 @@ public class HuffmanCode {
 		}
 		System.out.println("    minBits számolása kész");
 
+		Arrays.sort(forHuffmanTables);
+		int[] fhtLengths = getLengthStartArray(forHuffmanTables);
+		int[] fhtLengthsEnd = getLengthEndArray(forHuffmanTables);
+
 		System.out.println("    tábla dekódolása megkezdve");
 		this.literal = new HuffmanNode[hlit];
-		decodeHuffmanTree(literal, forHuffmanTables, als, is, minBits);
+		decodeHuffmanTree(literal, forHuffmanTables, fhtLengths, fhtLengthsEnd, als, is, minBits);
 		System.out.println("    tábla dekódolása kész");
 
 		System.out.println("    tábla építése megkezdve");
@@ -77,13 +103,16 @@ public class HuffmanCode {
 		System.out.println("  Tényleges/hossz tábla kész");
 
 		this.dist = new HuffmanNode[hdist];
-		decodeHuffmanTree(dist, forHuffmanTables, als, is, minBits);
+		decodeHuffmanTree(dist, forHuffmanTables, fhtLengths, fhtLengthsEnd, als, is, minBits);
 
 		buildHuffmanTree(dist, 15);
 		System.out.println("  Távolság tábla kész");
 		System.out.println("Huffman tábla kész");
 	}
 
+	/**
+	 * Statikus Huffman tábla
+	 */
 	private HuffmanCode() {
 		this.hlit = STATIC_HLIT;
 		this.hdist = STATIC_HDIST;
@@ -91,38 +120,79 @@ public class HuffmanCode {
 
 		this.literal = new HuffmanNode[this.hlit];
 		for (int i = 0; i <= 143; i++) {
-			literal[i] = new HuffmanNode(8);
+			literal[i] = new HuffmanNode(8, i);
 			literal[i].code = STATIC_FIRST_LIT_SECTION + i;
 		}
 		for (int i = 144; i <= 255; i++) {
-			literal[i] = new HuffmanNode(9);
+			literal[i] = new HuffmanNode(9, i);
 			literal[i].code = STATIC_SECOND_LIT_SECTION + i - 144;
 		}
 		for (int i = 256; i <= 279; i++) {
-			literal[i] = new HuffmanNode(7);
+			literal[i] = new HuffmanNode(7, i);
 			literal[i].code = STATIC_THIRD_LIT_SECTION + i - 256;
 		}
 		for (int i = 280; i <= 287; i++) {
-			literal[i] = new HuffmanNode(8);
+			literal[i] = new HuffmanNode(8, i);
 			literal[i].code = STATIC_FOURTH_LIT_SECTION + i - 280;
 		}
 
 		this.dist = new HuffmanNode[this.hdist];
 		for (int i = 0; i < dist.length; i++) {
-			dist[i] = new HuffmanNode(5);
+			dist[i] = new HuffmanNode(5, i);
 			dist[i].code = i;
 		}
+		
+		Arrays.sort(this.literal);
+		Arrays.sort(this.dist);
 	}
 
-	public static boolean needBits(int val, int len, HuffmanNode[] table) {
-		for (HuffmanNode h : table) {
-			if (h.code == val && h.len == len && h.len != 0) {
-				return false;
+	/**
+	 * @param table    Rendezve! Első szempont: len, Második szempont: code
+	 * @param lenStart A len hosszúak kezdőpontja (inclusive)
+	 * @param lenEnd   A len hosszúak végpontja (exclusive)
+	 */
+	public static boolean needBits(int code, int len, HuffmanNode[] table, int lenStart, int lenEnd) {
+		// bináris keresés
+
+// 		l = 0, r = table.len
+// 		while l < r - 1:
+// 		  m = (l + r) / 2
+// 		  if table[m].code <= code:
+// 		    l = m
+// 		  else:
+// 		    r = m
+// 		return table[l].code == code
+// 		; kb így, bár lehet, hogy l = len hosszú kezdete, r = len hosszú vége + 1 kéne
+// 		; legyen (kb. 3 lépéssel kevesebb)
+
+		if (len == 0 || lenStart == -1) {
+			return true;
+		}
+
+		int l = lenStart, r = lenEnd;
+		while (l < r - 1) {
+			int m = (l + r) / 2;
+			if (table[m].code <= code) {
+				l = m;
+			} else {
+				r = m;
 			}
 		}
-		return true;
+
+		return table[l].code != code;
 	}
 
+	/*
+	 * public static boolean needBits(int code, int len, HuffmanNode[] table) { //
+	 * régi, lassú megoldás, rendezetlen tömbökre for( HuffmanNode h:table) { if
+	 * (h.code == code && h.len == len && h.len != 0) { return false; }
+	 * }return*true; }
+	 */
+
+	/**
+	 * 
+	 * @param tree Rendezetlen!!
+	 */
 	public static void buildHuffmanTree(HuffmanNode[] tree, int maxCodeLength) {
 		int[] bl_count = new int[maxCodeLength + 1];
 		for (int i = 0; i < tree.length; i++) {
@@ -154,75 +224,123 @@ public class HuffmanCode {
 		}
 	}
 
-	public static void decodeHuffmanTree(HuffmanNode[] tree, HuffmanNode[] forHuffmanTables, BooleanArrayList als,
-			InputStream is, int minBits) throws IOException {
+	/**
+	 * @param forHuffmanTables Rendezve! Első szempont: len, Második szempont: code
+	 */
+	public static void decodeHuffmanTree(HuffmanNode[] tree, HuffmanNode[] forHuffmanTables, int[] lenStarts,
+			int[] lenEnds, MyBitSet als, Reader is, int minBits) throws IOException {
+		byte b = 0;
 		for (int i = 0; i < tree.length; i++) {
 			if (als.size() < minBits) {
-				byte[] buf = new byte[1];
-				is.read(buf);
-				Inflater.addBitsToAls(als, buf);
+				b = is.read();
+				als.add(b);
 			}
 			int val = als.getNextXBitIntegerMSBFirst(minBits), len = minBits;
-			while (needBits(val, len, forHuffmanTables)) {
+			while (needBits(val, len, forHuffmanTables, lenStarts[len], lenEnds[len])) {
 				if (als.size() < 1) {
-					byte[] buf = new byte[1];
-					is.read(buf);
-					Inflater.addBitsToAls(als, buf);
+					b = is.read();
+					als.add(b);
 				}
 				val <<= 1;
-				val |= als.getLast() ? 1 : 0;
+				val |= als.getLastBit();
 				len++;
 			}
-			int eredmeny = getValue(val, len, forHuffmanTables);
+			int eredmeny = getValue(val, len, forHuffmanTables, lenStarts[len], lenEnds[len]);
 			if (eredmeny >= 0 && eredmeny <= 15) {
-				tree[i] = new HuffmanNode(eredmeny);
+				tree[i] = new HuffmanNode(eredmeny, i);
 			} else if (eredmeny == 16) {
-				int elozo = tree[i - 1].len;
+				int elozo;
+				if (i == 0) {
+					elozo = 0;
+					System.err.println("HIBA! eredmeny = 16, i = 0");
+				} else {
+					elozo = tree[i - 1].len;
+				}
 				if (als.size() < 2) {
-					byte[] buf = new byte[1];
-					is.read(buf);
-					Inflater.addBitsToAls(als, buf);
+					b = is.read();
+					als.add(b);
 				}
 				int repeat = als.getNextXBitIntegerLSBFirst(2) + 3;
 				for (int j = 0; j < repeat; j++, i++) {
-					tree[i] = new HuffmanNode(elozo);
+					tree[i] = new HuffmanNode(elozo, i);
 				}
 				i--;
 			} else if (eredmeny == 17) {
 				if (als.size() < 3) {
-					byte[] buf = new byte[1];
-					is.read(buf);
-					Inflater.addBitsToAls(als, buf);
+					b = is.read();
+					als.add(b);
 				}
 				int repeat = als.getNextXBitIntegerLSBFirst(3) + 3;
 				for (int j = 0; j < repeat; j++, i++) {
-					tree[i] = new HuffmanNode(0);
+					tree[i] = new HuffmanNode(0, i);
 				}
 				i--;
 			} else if (eredmeny == 18) {
 				if (als.size() < 7) {
-					byte[] buf = new byte[1];
-					is.read(buf);
-					Inflater.addBitsToAls(als, buf);
+					b = is.read();
+					als.add(b);
 				}
 				int repeat = als.getNextXBitIntegerLSBFirst(7) + 11;
 				for (int j = 0; j < repeat; j++, i++) {
-					tree[i] = new HuffmanNode(0);
+					tree[i] = new HuffmanNode(0, i);
 				}
 				i--;
 			} else {
-				System.err.println("MI A FENE?!");
+				System.err.println("MI A FENE?! eredmeny = " + eredmeny);
 			}
 		}
 	}
 
-	public static int getValue(int val, int len, HuffmanNode[] table) {
-		for (int i = 0; i < table.length; i++) {
-			HuffmanNode h = table[i];
-			if (h.code == val && h.len == len) {
-				return i;
+	public static int getValue(int code, int len, HuffmanNode[] table, int lenStart, int lenEnd) {
+		int l = lenStart, r = lenEnd;
+		while (l < r - 1) {
+			int m = (l + r) / 2;
+			if (code >= table[m].code) {
+				l = m;
+			} else {
+				r = m;
 			}
 		}
-		return -1;
+		return table[l].index;
+		// Régi vacak, rendezetlen tömbökre
+//		for (int i = 0; i < table.length; i++) {
+//			HuffmanNode h = table[i];
+//			if (h.code == code && h.len == len) {
+//				return h.index;
+//			}
+//		}
+//		return -1;
+	}
+
+	public static int[] getLengthStartArray(HuffmanNode[] n) {
+		int[] lengths = new int[n[n.length - 1].len + 1]; // utolsó (leghosszabb) elem hossza + 1 (0..len)
+		Arrays.fill(lengths, -1);
+
+		// TODO bináris keresés
+		for (int i = 0; i < n.length; i++) {
+			if (lengths[n[i].len] == -1) {
+				lengths[n[i].len] = i;
+			}
+		}
+
+		return lengths;
+	}
+
+	public static int[] getLengthEndArray(HuffmanNode[] n) {
+		int[] lengths = new int[n[n.length - 1].len + 1];
+		Arrays.fill(lengths, -2);
+
+		// TODO bináris keresés
+		for (int i = 0; i < n.length; i++) {
+			if (lengths[n[i].len] < i) {
+				lengths[n[i].len] = i;
+			}
+		}
+
+		for (int i = 0; i < lengths.length; i++) {
+			lengths[i]++;
+		}
+
+		return lengths;
 	}
 }

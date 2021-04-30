@@ -3,9 +3,11 @@ package hu.hvj.marci.fileviewer;
 import hu.hvj.marci.gzreader.GZReader;
 import hu.hvj.marci.icoviewer.IcoViewer;
 import hu.hvj.marci.pngviewer.PNGViewer;
+import hu.hvj.marci.gifviewer.GIFViewer;
 
 public enum SupportedFileType {
-	PNG(PNGViewer.class, ".png"), GZIP(GZReader.class, ".gz"), ICO(IcoViewer.class, ".ico", ".cur");
+	PNG(PNGViewer.class, ".png"), GZIP(GZReader.class, ".gz", ".gzip"), ICO(IcoViewer.class, ".ico", ".cur"),
+	GIF(GIFViewer.class, ".gif");
 
 	private final String[] ext;
 	private final Class<? extends Main> main;

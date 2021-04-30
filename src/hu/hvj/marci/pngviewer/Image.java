@@ -26,6 +26,11 @@ public class Image extends Component {
 	 */
 	private static final long serialVersionUID = -2903175179212477224L;
 
+	private static final int[] starting_row = { 0, 0, 4, 0, 2, 0, 1 };
+	private static final int[] starting_col = { 0, 4, 0, 2, 0, 1, 0 };
+	private static final int[] row_increment = { 8, 8, 8, 4, 4, 2, 2 };
+	private static final int[] col_increment = { 8, 8, 4, 4, 2, 2, 1 };
+
 	private Chunk[] chunks;
 	private IHDR ihdr;
 	private IDAT[] idats;
@@ -35,7 +40,6 @@ public class Image extends Component {
 	private byte[] decompressedData;
 	private double scale;
 	private boolean unfilter = true;
-	private int counter = 0;
 
 	public Image(Chunk[] chunks) {
 		this.chunks = chunks;
@@ -135,25 +139,6 @@ public class Image extends Component {
 
 	public byte[] decompress(byte[] bytesToDecompress) {
 		ZLib.decompress(bytesToDecompress);
-
-//		for (byte b : bytesToDecompress) {
-//			int n = btpi(b);
-//			if (n == 0) {
-//				Logger.debug("Image.decompress", "00000000");
-//				break;
-//			}
-//			StringBuilder binaryNumber = new StringBuilder();
-//			while (n > 0) {
-//				int remainder = n % 2;
-//				binaryNumber.append(remainder);
-//				n /= 2;
-//			}
-//			while (binaryNumber.length() % 8 > 0) {
-//				binaryNumber.append('0');
-//			}
-//			binaryNumber = binaryNumber.reverse();
-//			Logger.debug("Image.decompress", binaryNumber.toString());
-//		}
 
 		byte[] returnValues = null;
 
@@ -291,6 +276,67 @@ public class Image extends Component {
 
 					Logger.debug(String.format("A kép festése befejeződött %.2f másodperc alatt",
 							(System.currentTimeMillis() - startTime) / 1000.0), 1);
+				} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
+					int[] widths = new int[7];
+					int[] heights = new int[7];
+					byte[][][] passes = new byte[7][][];
+					byte[][] filterMethods = new byte[7][];
+
+					int pass = 0;
+
+					while (pass < 7) {
+						widths[pass] = (int) Math
+								.ceil((this.ihdr.getWidth() - starting_col[pass]) / (double) col_increment[pass]);
+						heights[pass] = (int) Math
+								.ceil((this.ihdr.getHeight() - starting_row[pass]) / (double) row_increment[pass]);
+						passes[pass] = new byte[heights[pass]][widths[pass]];
+						filterMethods[pass] = new byte[heights[pass]];
+
+						pass++;
+					}
+
+					pass = 0;
+
+					int szamlalo = 0;
+					while (pass < 7) {
+						for (int i = 0; i < passes[pass].length; i++) {
+							filterMethods[pass][i] = this.decompressedData[szamlalo++];
+							for (int j = 1; j < passes[pass][i].length; j++, szamlalo++) {
+								try {
+								passes[pass][i][j] = this.decompressedData[szamlalo];
+								} catch (Exception e) {
+									System.err.println(pass + " " + i + " " + j + " " + szamlalo + " " + passes[pass][i].length);
+									System.exit(0);
+								}
+							}
+						}
+						pass++;
+					}
+
+					for (int i = 0; i < filterMethods.length; i++) {
+						passes[i] = Unfilter.unfilter(passes[i], filterMethods[i], 1);
+					}
+
+					pass = 0;
+					int row, col;
+
+					while (pass < 7) {
+						row = starting_row[pass];
+						int i = 0;
+						while (row < this.ihdr.getHeight()) {
+							col = starting_col[pass];
+							int j = 0;
+							while (col < this.ihdr.getWidth()) {
+								bi.setRGB(col, row, this.plte.getColor(passes[pass][i][j]).getRGB());
+								col += col_increment[pass];
+								j++;
+							}
+							row += row_increment[pass];
+							i++;
+						}
+
+						pass++;
+					}
 				} else {
 					Logger.error("Image.paint",
 							String.format("Unsupported interlacing method (%d)", this.ihdr.getInterlaceMethod()));
@@ -396,10 +442,6 @@ public class Image extends Component {
 				}
 			}
 		} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
-			int[] starting_row = { 0, 0, 4, 0, 2, 0, 1 };
-			int[] starting_col = { 0, 4, 0, 2, 0, 1, 0 };
-			int[] row_increment = { 8, 8, 8, 4, 4, 2, 2 };
-			int[] col_increment = { 8, 8, 4, 4, 2, 2, 1 };
 			int[] widths = new int[7];
 			int[] heights = new int[7];
 			byte[][][] passes = new byte[7][][];
@@ -438,38 +480,24 @@ public class Image extends Component {
 			}
 
 			pass = 0;
-			int row, col, counter = 0;
-			boolean go = true;
+			int row, col;
 
-			while (pass < 7 && go) {
+			while (pass < 7) {
 				row = starting_row[pass];
 				int i = 0;
 				while (row < this.ihdr.getHeight()) {
 					col = starting_col[pass];
 					int j = 0;
-					while (col < this.ihdr.getWidth() && go) {
-//						if (counter == this.counter) {
-//							go = false;
-//							this.counter++;
-//							new Timer().schedule(new TimerTask() {
-//
-//								@Override
-//								public void run() {
-//									repaint();
-//								}
-//							}, 1);
-//							break;
-//						}
-						counter++;
+					while (col < this.ihdr.getWidth()) {
 						bi.setRGB(col, row,
 								getColor(this.ihdr.getColorType(), bytesPerPixel, passes[pass][i], j).getRGB());
 						col += col_increment[pass];
-						j++;
+						j += bytesPerPixel;
 					}
 					row += row_increment[pass];
 					i++;
 				}
-				
+
 				pass++;
 			}
 
