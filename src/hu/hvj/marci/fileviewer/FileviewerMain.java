@@ -20,17 +20,17 @@ public class FileViewerMain {
 			return;
 		}
 
-//		File file = new File(String.join(" ", args));
+		File file = new File(String.join(" ", args));
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
 //		File file = new File("C:\\Users\\marci\\OneDrive\\Pictures\\j-s billentyűzet másolata.png");
 //		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\PNGSuite\\basi0g04.png");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\hell.png");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\SzenHidrogen\\gifek\\1.gif");
-//		File file = new File("C:\\Users\\marci\\Downloads\\basn0g01.gif");
+//		File file = new File("C:\\Users\\marci\\Downloads\\anvil-parser-0.9.0.tar.gz");
 //		File file = new File("C:\\HashiCorp\\256x256.png.gz");
 //		File file = new File("C:\\HashiCorp\\eclipse-inst-win64.exe.gz");
-		File file = new File("C:\\HashiCorp\\gzip\\arduino-1.8.13-windows.exe.gz");
+//		File file = new File("C:\\HashiCorp\\gzip\\arduino-1.8.13-windows.exe.gz");
 		if (!file.exists()) {
 			System.err.println("Ez a fájl nem létezik! " + file.getAbsolutePath());
 			JOptionPane.showMessageDialog(null, "Ez a fájl nem létezik! " + file.getAbsolutePath(),

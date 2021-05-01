@@ -39,7 +39,10 @@ public class GZGui extends JFrame {
 		public void actionPerformed(ActionEvent e) {
 			try {
 				JFileChooser jfc = new JFileChooser();
-				jfc.setSelectedFile(new File(parent.getGZ().getOriginalFilename()));
+				boolean endsWith = parent.getGZ().getFile().getParent().endsWith(System.getProperty("file.separator"));
+				jfc.setSelectedFile(new File(
+						parent.getGZ().getFile().getParent() + (endsWith ? "" : System.getProperty("file.separator"))
+								+ parent.getGZ().getOriginalFilename()));
 				int state = jfc.showSaveDialog(parent);
 				if (state == JFileChooser.APPROVE_OPTION) {
 					File output = jfc.getSelectedFile();
@@ -50,8 +53,8 @@ public class GZGui extends JFrame {
 					JOptionPane.showMessageDialog(parent, "A kitömörítés sikeres!");
 				}
 			} catch (IOException ex) {
-				JOptionPane.showMessageDialog(parent, ex.getClass().getName() + ": " + ex.getMessage(), Forditas.DEFAULT.getText("error"),
-						JOptionPane.ERROR_MESSAGE);
+				JOptionPane.showMessageDialog(parent, ex.getClass().getName() + ": " + ex.getMessage(),
+						Forditas.DEFAULT.getText("error"), JOptionPane.ERROR_MESSAGE);
 				ex.printStackTrace();
 			}
 		}
