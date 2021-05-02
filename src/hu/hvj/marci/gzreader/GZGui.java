@@ -46,10 +46,20 @@ public class GZGui extends JFrame {
 				int state = jfc.showSaveDialog(parent);
 				if (state == JFileChooser.APPROVE_OPTION) {
 					File output = jfc.getSelectedFile();
+					if (output.exists()) {
+						int feluliras = JOptionPane.showConfirmDialog(parent,
+								"Ez a fájl már létezik! Felül akarod írni?", "Vigyázat", JOptionPane.YES_NO_OPTION);
+						if (feluliras == JOptionPane.NO_OPTION) {
+							return;
+						}
+					}
 					output.createNewFile();
 					FileOutputStream os = new FileOutputStream(output);
 					os.write(parent.getGZ().getDecompressedData());
 					os.close();
+					if (parent.getGZ().getMTIME().getTime() != 0) {
+						output.setLastModified(parent.getGZ().getMTIME().getTime());
+					}
 					JOptionPane.showMessageDialog(parent, "A kitömörítés sikeres!");
 				}
 			} catch (IOException ex) {
