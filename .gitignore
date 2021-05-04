@@ -2,3 +2,6 @@
 .project 
 .classpath 
 bin 
+Launcher/.vs
+Launcher/Debug
+Launcher/x64
