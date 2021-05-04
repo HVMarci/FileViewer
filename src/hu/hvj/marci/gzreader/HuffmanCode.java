@@ -3,6 +3,7 @@ package hu.hvj.marci.gzreader;
 import java.io.IOException;
 import java.util.Arrays;
 
+import hu.hvj.marci.global.ReversedBitSet;
 import hu.hvj.marci.global.Reader;
 
 public class HuffmanCode {
@@ -49,7 +50,7 @@ public class HuffmanCode {
 
 	public static final HuffmanCode STATIC_HUFFMAN_TABLE = new HuffmanCode();
 
-	public HuffmanCode(MyBitSet als, Reader is) throws IOException {
+	public HuffmanCode(ReversedBitSet als, Reader is) throws IOException {
 		System.out.println("Huffman tábla készítése megkezdve");
 		if (als.size() < 14) {
 			byte[] bb = new byte[2];
@@ -228,7 +229,7 @@ public class HuffmanCode {
 	 * @param forHuffmanTables Rendezve! Első szempont: len, Második szempont: code
 	 */
 	public static void decodeHuffmanTree(HuffmanNode[] tree, HuffmanNode[] forHuffmanTables, int[] lenStarts,
-			int[] lenEnds, MyBitSet als, Reader is, int minBits) throws IOException {
+			int[] lenEnds, ReversedBitSet als, Reader is, int minBits) throws IOException {
 		byte b = 0;
 		for (int i = 0; i < tree.length; i++) {
 			if (als.size() < minBits) {

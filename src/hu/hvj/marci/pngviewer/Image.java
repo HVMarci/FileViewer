@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
+import hu.hvj.marci.global.NormalBitSet;
 import hu.hvj.marci.pngviewer.chunks.Chunk;
 import hu.hvj.marci.pngviewer.chunks.ancillary.BKGD;
 import hu.hvj.marci.pngviewer.chunks.ancillary.HIST;
@@ -40,6 +41,7 @@ public class Image extends Component {
 	private byte[] decompressedData;
 	private double scale;
 	private boolean unfilter = true;
+	private int[] filterMethods = new int[5];
 
 	public Image(Chunk[] chunks) {
 		this.chunks = chunks;
@@ -199,313 +201,444 @@ public class Image extends Component {
 	}
 
 	public int[] getFilterMethods() {
-		int bpp = this.ihdr.getBitsPerPixel();
-		int[] counter = new int[5];
-
-		if (this.ihdr.getWidth() * bpp % 8 == 0) {
-			for (int i = 0; i < this.decompressedData.length; i += this.ihdr.getWidth() * bpp / 8 + 1) {
-				counter[this.decompressedData[i]]++;
-			}
-		} else {
-			for (int i = 0; i < this.decompressedData.length; i += this.ihdr.getWidth() * bpp + 8
-					- (this.ihdr.getWidth() * bpp) % 8) {
-				counter[this.decompressedData[i]]++;
-			}
-		}
-
-		return counter;
+//		int bpp = this.ihdr.getBitsPerPixel();
+//		int[] counter = new int[5];
+//
+//		if (this.ihdr.getWidth() * bpp % 8 == 0) {
+//			for (int i = 0; i < this.decompressedData.length; i += this.ihdr.getWidth() * bpp / 8 + 1) {
+//				counter[this.decompressedData[i]]++;
+//			}
+//		} else {
+//			for (int i = 0; i < this.decompressedData.length; i += this.ihdr.getWidth() * bpp + 8
+//					- (this.ihdr.getWidth() * bpp) % 8) {
+//				counter[this.decompressedData[i]]++;
+//			}
+//		}
+//
+//		return counter;
+		return this.filterMethods;
 	}
 
+	// TODO move to constructor
 	@Override
 	public void paint(Graphics g) {
-		int bytesPerPixel;
+		// gyorsabb megoldás, NormalBitSet-tel (hu.hvj.marci.global.NormalBitSet)
 		long startTime = System.currentTimeMillis();
 		BufferedImage bi = new BufferedImage(this.ihdr.getWidth(), this.ihdr.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		final int samplesPerPixel;
 		switch (this.ihdr.getColorType()) {
 		case 0:
-			if (this.ihdr.getBitDepth() % 8 == 0)
-				bytesPerPixel = this.ihdr.getBitDepth() / 8;
-			else {
-				boolean[] bitArray = BitHelper.bytesToBooleans(this.decompressedData);
-
-				Color bkgd = new Color(255, 255, 255);
-				if (this.hasBKGD()) {
-					bkgd = this.getBKGD().getColor(this.ihdr.getBitDepth());
-				}
-				g.setColor(bkgd);
-				g.fillRect(0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale));
-
-				if (this.ihdr.getInterlaceMethod() == 0) {
-					byte[] filterMethods = new byte[this.ihdr.getHeight()];
-					byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth()];
-
-					int unusedBits = (8 - this.ihdr.getWidth() * this.ihdr.getBitDepth() % 8) % 8;
-					int rowSize = this.ihdr.getWidth() * this.ihdr.getBitDepth() + 8 - unusedBits;
-					for (int i = 0, index1 = 0, index2 = 0; i < bitArray.length; i++) {
-						int b = bitArray[i] ? 1 : 0;
-						if (rowSize - i % rowSize == unusedBits) {
-							i += unusedBits - 1;
-							continue;
-						}
-						if (i % rowSize == 0) {
-							filterMethods[index1] = BitHelper
-									.booleansToByte(PNGHelper.getArrayPart(bitArray, i, i + 7));
-							i += 7;
-							index1++;
-							index2 = 0;
-						} else {
-							pixels[index1 - 1][index2] |= b
-									* (int) Math.pow(2, this.ihdr.getBitDepth() - i % this.ihdr.getBitDepth() - 1);
-							if ((i + 1) % this.ihdr.getBitDepth() == 0)
-								index2++;
-						}
-					}
-
-					if (this.unfilter)
-						pixels = Unfilter.unfilter(pixels, filterMethods, this.ihdr.getBitDepth());
-
-					for (int i = 0; i < pixels.length; i++) {
-						for (int j = 0; j < pixels[i].length; j++) {
-							float gray = (float) (pixels[i][j] / (Math.pow(2, this.ihdr.getBitDepth()) - 1));
-							bi.setRGB(j, i, new Color(gray, gray, gray).getRGB());
-						}
-					}
-
-					g.drawImage(bi, 0, 0, (int) (this.ihdr.getWidth() * this.scale),
-							(int) (this.ihdr.getHeight() * this.scale), 0, 0, bi.getWidth(), bi.getHeight(), null);
-
-					Logger.debug(String.format("A kép festése befejeződött %.2f másodperc alatt",
-							(System.currentTimeMillis() - startTime) / 1000.0), 1);
-				} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
-					int[] widths = new int[7];
-					int[] heights = new int[7];
-					byte[][][] passes = new byte[7][][];
-					byte[][] filterMethods = new byte[7][];
-
-					int pass = 0;
-
-					while (pass < 7) {
-						widths[pass] = (int) Math
-								.ceil((this.ihdr.getWidth() - starting_col[pass]) / (double) col_increment[pass]);
-						heights[pass] = (int) Math
-								.ceil((this.ihdr.getHeight() - starting_row[pass]) / (double) row_increment[pass]);
-						passes[pass] = new byte[heights[pass]][widths[pass]];
-						filterMethods[pass] = new byte[heights[pass]];
-
-						pass++;
-					}
-
-					pass = 0;
-
-					int szamlalo = 0;
-					while (pass < 7) {
-						for (int i = 0; i < passes[pass].length; i++) {
-							filterMethods[pass][i] = this.decompressedData[szamlalo++];
-							for (int j = 1; j < passes[pass][i].length; j++, szamlalo++) {
-								try {
-								passes[pass][i][j] = this.decompressedData[szamlalo];
-								} catch (Exception e) {
-									System.err.println(pass + " " + i + " " + j + " " + szamlalo + " " + passes[pass][i].length);
-									System.exit(0);
-								}
-							}
-						}
-						pass++;
-					}
-
-					for (int i = 0; i < filterMethods.length; i++) {
-						passes[i] = Unfilter.unfilter(passes[i], filterMethods[i], 1);
-					}
-
-					pass = 0;
-					int row, col;
-
-					while (pass < 7) {
-						row = starting_row[pass];
-						int i = 0;
-						while (row < this.ihdr.getHeight()) {
-							col = starting_col[pass];
-							int j = 0;
-							while (col < this.ihdr.getWidth()) {
-								bi.setRGB(col, row, this.plte.getColor(passes[pass][i][j]).getRGB());
-								col += col_increment[pass];
-								j++;
-							}
-							row += row_increment[pass];
-							i++;
-						}
-
-						pass++;
-					}
-				} else {
-					Logger.error("Image.paint",
-							String.format("Unsupported interlacing method (%d)", this.ihdr.getInterlaceMethod()));
-				}
-				return;
-			}
+		case 3:
+			samplesPerPixel = 1;
 			break;
-		case 3: // paletted
-			boolean[] bitArray = BitHelper.bytesToBooleans(this.decompressedData);
-
-			byte[] filterMethods = new byte[this.ihdr.getHeight()];
-			byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth()];
-
-			int unusedBits = (8 - this.ihdr.getWidth() * this.ihdr.getBitDepth() % 8) % 8;
-			int rowSize = this.ihdr.getWidth() * this.ihdr.getBitDepth() + unusedBits + 8;
-			for (int i = 0, index1 = 0, index2 = 0; i < bitArray.length; i++) {
-				int b = bitArray[i] ? 1 : 0;
-				if (rowSize - i % rowSize == unusedBits) {
-					i += unusedBits - 1;
-					continue;
-				}
-				if (i % rowSize == 0) {
-					filterMethods[index1] = BitHelper.booleansToByte(PNGHelper.getArrayPart(bitArray, i, i + 7));
-					i += 7;
-					index1++;
-					index2 = 0;
-				} else {
-					pixels[index1 - 1][index2] |= b
-							* (int) Math.pow(2, this.ihdr.getBitDepth() - i % this.ihdr.getBitDepth() - 1);
-					if ((i + 1) % this.ihdr.getBitDepth() == 0)
-						index2++;
-				}
-			}
-
-			pixels = Unfilter.unfilter(pixels, filterMethods, this.ihdr.getBitDepth());
-
-			Color bkgd;
-			if (this.hasBKGD()) {
-				bkgd = this.getBKGD().getColor(this.ihdr.getBitDepth());
-			} else if (this.hasHIST()) {
-				bkgd = this.plte.getColor(this.hist.getMostCommonIndex());
-			} else {
-				bkgd = this.plte.getColor(0);
-			}
-			g.setColor(bkgd);
-			g.fillRect(0, 0, (int) (pixels[0].length * this.scale), (int) (pixels.length * this.scale));
-
-			for (int i = 0; i < pixels.length; i++) {
-				for (int j = 0; j < pixels[i].length; j++) {
-					bi.setRGB(j, i, this.plte.getColor(btpi(pixels[i][j])).getRGB());
-				}
-			}
-
-			g.drawImage(bi, 0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale),
-					0, 0, bi.getWidth(), bi.getHeight(), null);
-
-			Logger.debug(String.format("A kép festése befejeződött %.2f másodperc alatt",
-					(System.currentTimeMillis() - startTime) / 1000.0), 1);
-			return;
 		case 2:
-			bytesPerPixel = 3 * this.ihdr.getBitDepth() / 8;
+			samplesPerPixel = 3;
 			break;
 		case 4:
-			bytesPerPixel = 2 * this.ihdr.getBitDepth() / 8;
+			samplesPerPixel = 2;
 			break;
 		case 6:
-			bytesPerPixel = 4 * this.ihdr.getBitDepth() / 8;
+			samplesPerPixel = 4;
 			break;
 		default:
-			Logger.error("Image.paint",
-					String.format("Color type is not supported this time. (%d)%n", this.ihdr.getColorType()));
+			System.err.println("HIBA! Ismeretlen szín típus! " + this.ihdr.getColorType());
 			return;
 		}
 
+		final Color bkgd;
+		if (this.hasBKGD()) {
+			this.bkgd.setPLTE(this.plte);
+			bkgd = this.bkgd.getColor(this.ihdr.getBitDepth());
+		} else if (this.hasPLTE() && this.hasHIST()) {
+			bkgd = this.plte.getColor(this.hist.getMostCommonIndex());
+		} else {
+			bkgd = new Color(255, 255, 255);
+		}
+		g.setColor(bkgd);
+		g.fillRect(0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale));
+
 		if (this.ihdr.getInterlaceMethod() == 0) {
+			int w = (int) Math.ceil(this.ihdr.getWidth() * this.ihdr.getBitDepth() * samplesPerPixel / 8.);
+			byte[][] unfilteredArray = new byte[this.ihdr.getHeight()][w];
 			byte[] filterMethods = new byte[this.ihdr.getHeight()];
-			byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth() * bytesPerPixel];
 
-			for (int i = 0, index1 = 0, index2 = 0; i < this.decompressedData.length; i++) {
-				if (i % (this.ihdr.getWidth() * bytesPerPixel + 1) == 0) {
-					filterMethods[index1] = this.decompressedData[i];
-					index1++;
-					index2 = 0;
-				} else {
-					pixels[index1 - 1][index2] = this.decompressedData[i];
-					index2++;
+			int index = 0;
+			for (int i = 0; i < this.ihdr.getHeight(); i++) {
+				filterMethods[i] = this.decompressedData[index++];
+				this.filterMethods[filterMethods[i]]++;
+				for (int j = 0; j < w; j++, index++) {
+					unfilteredArray[i][j] = this.decompressedData[index];
 				}
 			}
 
-			if (this.unfilter)
-				pixels = Unfilter.unfilter(pixels, filterMethods, bytesPerPixel);
+			unfilteredArray = Unfilter.unfilter(unfilteredArray, filterMethods,
+					(int) Math.ceil(this.ihdr.getBitsPerPixel() / 8.));
+			NormalBitSet bs = new NormalBitSet(unfilteredArray.length * unfilteredArray[0].length);
+			bs.add(unfilteredArray);
 
-			Color bkgd = new Color(255, 255, 255);
-			if (this.hasBKGD()) {
-				bkgd = this.getBKGD().getColor(this.ihdr.getBitDepth());
-			}
-			g.setColor(bkgd);
-			g.fillRect(0, 0, (int) (pixels[0].length / bytesPerPixel * this.scale), (int) (pixels.length * this.scale));
-
-			for (int i = 0; i < pixels.length; i++) {
-				for (int j = 0, x = 0; j < pixels[i].length; j += bytesPerPixel, x++) {
-					bi.setRGB(x, i, getColor(this.ihdr.getColorType(), bytesPerPixel, pixels[i], j).getRGB());
+			int[] samples = new int[samplesPerPixel]; // memóriacsökkentés miatt itt deklarálom
+			for (int i = 0; i < this.ihdr.getHeight(); i++) {
+				for (int j = 0; j < this.ihdr.getWidth(); j++) {
+					for (int k = 0; k < samplesPerPixel; k++) {
+						samples[k] = bs.getNextXBitInteger(this.ihdr.getBitDepth());
+					}
+					bi.setRGB(j, i, getColor(samples).getRGB());
 				}
+				bs.nextByte();
 			}
-		} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
+		} else if (this.ihdr.getInterlaceMethod() == 1) {
 			int[] widths = new int[7];
 			int[] heights = new int[7];
 			byte[][][] passes = new byte[7][][];
 			byte[][] filterMethods = new byte[7][];
+			NormalBitSet[] bs = new NormalBitSet[7];
 
 			int pass = 0;
 
-			while (pass < 7) {
+			for (; pass < 7; pass++) {
 				widths[pass] = (int) Math
 						.ceil((this.ihdr.getWidth() - starting_col[pass]) / (double) col_increment[pass]);
 				heights[pass] = (int) Math
 						.ceil((this.ihdr.getHeight() - starting_row[pass]) / (double) row_increment[pass]);
-				passes[pass] = new byte[heights[pass]][widths[pass] * bytesPerPixel];
+				passes[pass] = new byte[heights[pass]][(int) Math
+						.ceil(widths[pass] * this.ihdr.getBitDepth() * samplesPerPixel / 8.)];
 				filterMethods[pass] = new byte[heights[pass]];
-
-				pass++;
+				bs[pass] = new NormalBitSet(passes[pass].length * passes[pass][0].length);
 			}
 
 			pass = 0;
 
 			int szamlalo = 0;
 			while (pass < 7) {
-				for (int i = 0; i < passes[pass].length; i++) {
+				int w = (int) Math.ceil(widths[pass] * this.ihdr.getBitDepth() * samplesPerPixel / 8.);
+				for (int i = 0; i < heights[pass]; i++) {
 					filterMethods[pass][i] = this.decompressedData[szamlalo++];
-					for (int j = 0; j < passes[pass][i].length; j += bytesPerPixel, szamlalo += bytesPerPixel) {
-						for (int k = 0; k < bytesPerPixel; k++) {
-							passes[pass][i][j + k] = this.decompressedData[szamlalo + k];
-						}
+					this.filterMethods[filterMethods[pass][i]]++;
+					for (int j = 0; j < w; j++, szamlalo++) {
+						passes[pass][i][j] = this.decompressedData[szamlalo];
 					}
 				}
 				pass++;
 			}
 
-			for (int i = 0; i < filterMethods.length; i++) {
-				passes[i] = Unfilter.unfilter(passes[i], filterMethods[i], bytesPerPixel);
+			for (int i = 0; i < passes.length; i++) {
+				passes[i] = Unfilter.unfilter(passes[i], filterMethods[i],
+						(int) Math.ceil(this.ihdr.getBitsPerPixel() / 8.));
+				bs[i].add(passes[i]);
 			}
 
 			pass = 0;
 			int row, col;
 
+			int[] samples = new int[samplesPerPixel];
 			while (pass < 7) {
 				row = starting_row[pass];
-				int i = 0;
 				while (row < this.ihdr.getHeight()) {
 					col = starting_col[pass];
-					int j = 0;
 					while (col < this.ihdr.getWidth()) {
-						bi.setRGB(col, row,
-								getColor(this.ihdr.getColorType(), bytesPerPixel, passes[pass][i], j).getRGB());
+						for (int k = 0; k < samplesPerPixel; k++) {
+							samples[k] = bs[pass].getNextXBitInteger(this.ihdr.getBitDepth());
+						}
+						bi.setRGB(col, row, getColor(samples).getRGB());
 						col += col_increment[pass];
-						j += bytesPerPixel;
 					}
 					row += row_increment[pass];
-					i++;
+					bs[pass].nextByte();
 				}
-
 				pass++;
 			}
-
 		} else {
-			Logger.error("Image.paint",
-					String.format("Undefined interlace method: %d", this.ihdr.getInterlaceMethod()));
+			System.err.println("HIBA! Ismeretlen interlacing methódus! " + this.ihdr.getInterlaceMethod());
 			return;
 		}
+		// régi, hosszú megoldás
+//		int bytesPerPixel;
+//		switch (this.ihdr.getColorType()) {
+//		case 0:
+//			if (this.ihdr.getBitDepth() % 8 == 0)
+//				bytesPerPixel = this.ihdr.getBitDepth() / 8;
+//			else {
+//				boolean[] bitArray = BitHelper.bytesToBooleans(this.decompressedData);
+//
+//				Color bkgda = new Color(255, 255, 255);
+//				if (this.hasBKGD()) {
+//					bkgda = this.getBKGD().getColor(this.ihdr.getBitDepth());
+//				}
+//				g.setColor(bkgda);
+//				g.fillRect(0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale));
+//
+//				if (this.ihdr.getInterlaceMethod() == 0) {
+//					byte[] filterMethods = new byte[this.ihdr.getHeight()];
+//					byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth()];
+//
+//					int unusedBits = (8 - this.ihdr.getWidth() * this.ihdr.getBitDepth() % 8) % 8;
+//					int rowSize = this.ihdr.getWidth() * this.ihdr.getBitDepth() + 8 - unusedBits;
+//					for (int i = 0, index1 = 0, index2 = 0; i < bitArray.length; i++) {
+//						int b = bitArray[i] ? 1 : 0;
+//						if (rowSize - i % rowSize == unusedBits) {
+//							i += unusedBits - 1;
+//							continue;
+//						}
+//						if (i % rowSize == 0) {
+//							filterMethods[index1] = BitHelper
+//									.booleansToByte(PNGHelper.getArrayPart(bitArray, i, i + 7));
+//							i += 7;
+//							index1++;
+//							index2 = 0;
+//						} else {
+//							pixels[index1 - 1][index2] |= b
+//									* (int) Math.pow(2, this.ihdr.getBitDepth() - i % this.ihdr.getBitDepth() - 1);
+//							if ((i + 1) % this.ihdr.getBitDepth() == 0)
+//								index2++;
+//						}
+//					}
+//
+//					if (this.unfilter)
+//						pixels = Unfilter.unfilter(pixels, filterMethods, this.ihdr.getBitDepth());
+//
+//					for (int i = 0; i < pixels.length; i++) {
+//						for (int j = 0; j < pixels[i].length; j++) {
+//							float gray = (float) (pixels[i][j] / (Math.pow(2, this.ihdr.getBitDepth()) - 1));
+//							bi.setRGB(j, i, new Color(gray, gray, gray).getRGB());
+//						}
+//					}
+//
+//					g.drawImage(bi, 0, 0, (int) (this.ihdr.getWidth() * this.scale),
+//							(int) (this.ihdr.getHeight() * this.scale), 0, 0, bi.getWidth(), bi.getHeight(), null);
+//
+//					Logger.debug(String.format("A kép festése befejeződött %.2f másodperc alatt",
+//							(System.currentTimeMillis() - startTime) / 1000.0), 1);
+//				} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
+//					int[] widths = new int[7];
+//					int[] heights = new int[7];
+//					byte[][][] passes = new byte[7][][];
+//					byte[][] filterMethods = new byte[7][];
+//
+//					int pass = 0;
+//
+//					while (pass < 7) {
+//						widths[pass] = (int) Math
+//								.ceil((this.ihdr.getWidth() - starting_col[pass]) / (double) col_increment[pass]);
+//						heights[pass] = (int) Math
+//								.ceil((this.ihdr.getHeight() - starting_row[pass]) / (double) row_increment[pass]);
+//						passes[pass] = new byte[heights[pass]][widths[pass]];
+//						filterMethods[pass] = new byte[heights[pass]];
+//
+//						pass++;
+//					}
+//
+//					pass = 0;
+//
+//					int szamlalo = 0;
+//					while (pass < 7) {
+//						for (int i = 0; i < passes[pass].length; i++) {
+//							filterMethods[pass][i] = this.decompressedData[szamlalo++];
+//							for (int j = 1; j < passes[pass][i].length; j++, szamlalo++) {
+//								try {
+//									passes[pass][i][j] = this.decompressedData[szamlalo];
+//								} catch (Exception e) {
+//									System.err.println(
+//											pass + " " + i + " " + j + " " + szamlalo + " " + passes[pass][i].length);
+//									System.exit(0);
+//								}
+//							}
+//						}
+//						pass++;
+//					}
+//
+//					for (int i = 0; i < filterMethods.length; i++) {
+//						passes[i] = Unfilter.unfilter(passes[i], filterMethods[i], 1);
+//					}
+//
+//					pass = 0;
+//					int row, col;
+//
+//					while (pass < 7) {
+//						row = starting_row[pass];
+//						int i = 0;
+//						while (row < this.ihdr.getHeight()) {
+//							col = starting_col[pass];
+//							int j = 0;
+//							while (col < this.ihdr.getWidth()) {
+//								bi.setRGB(col, row, this.plte.getColor(passes[pass][i][j]).getRGB());
+//								col += col_increment[pass];
+//								j++;
+//							}
+//							row += row_increment[pass];
+//							i++;
+//						}
+//
+//						pass++;
+//					}
+//				} else {
+//					Logger.error("Image.paint",
+//							String.format("Unsupported interlacing method (%d)", this.ihdr.getInterlaceMethod()));
+//				}
+//				return;
+//			}
+//			break;
+//		case 3: // paletted
+//			boolean[] bitArray = BitHelper.bytesToBooleans(this.decompressedData);
+//
+//			byte[] filterMethods = new byte[this.ihdr.getHeight()];
+//			byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth()];
+//
+//			int unusedBits = (8 - this.ihdr.getWidth() * this.ihdr.getBitDepth() % 8) % 8;
+//			int rowSize = this.ihdr.getWidth() * this.ihdr.getBitDepth() + unusedBits + 8;
+//			for (int i = 0, index1 = 0, index2 = 0; i < bitArray.length; i++) {
+//				int b = bitArray[i] ? 1 : 0;
+//				if (rowSize - i % rowSize == unusedBits) {
+//					i += unusedBits - 1;
+//					continue;
+//				}
+//				if (i % rowSize == 0) {
+//					filterMethods[index1] = BitHelper.booleansToByte(PNGHelper.getArrayPart(bitArray, i, i + 7));
+//					i += 7;
+//					index1++;
+//					index2 = 0;
+//				} else {
+//					pixels[index1 - 1][index2] |= b
+//							* (int) Math.pow(2, this.ihdr.getBitDepth() - i % this.ihdr.getBitDepth() - 1);
+//					if ((i + 1) % this.ihdr.getBitDepth() == 0)
+//						index2++;
+//				}
+//			}
+//
+//			pixels = Unfilter.unfilter(pixels, filterMethods, this.ihdr.getBitDepth());
+//
+//			Color bkgda;
+//			if (this.hasBKGD()) {
+//				bkgda = this.getBKGD().getColor(this.ihdr.getBitDepth());
+//			} else if (this.hasHIST()) {
+//				bkgda = this.plte.getColor(this.hist.getMostCommonIndex());
+//			} else {
+//				bkgda = this.plte.getColor(0);
+//			}
+//			g.setColor(bkgda);
+//			g.fillRect(0, 0, (int) (pixels[0].length * this.scale), (int) (pixels.length * this.scale));
+//
+//			for (int i = 0; i < pixels.length; i++) {
+//				for (int j = 0; j < pixels[i].length; j++) {
+//					bi.setRGB(j, i, this.plte.getColor(btpi(pixels[i][j])).getRGB());
+//				}
+//			}
+//
+//			g.drawImage(bi, 0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale),
+//					0, 0, bi.getWidth(), bi.getHeight(), null);
+//
+//			Logger.debug(String.format("A kép festése befejeződött %.2f másodperc alatt",
+//					(System.currentTimeMillis() - startTime) / 1000.0), 1);
+//			return;
+//		case 2:
+//			bytesPerPixel = 3 * this.ihdr.getBitDepth() / 8;
+//			break;
+//		case 4:
+//			bytesPerPixel = 2 * this.ihdr.getBitDepth() / 8;
+//			break;
+//		case 6:
+//			bytesPerPixel = 4 * this.ihdr.getBitDepth() / 8;
+//			break;
+//		default:
+//			Logger.error("Image.paint",
+//					String.format("Color type is not supported this time. (%d)%n", this.ihdr.getColorType()));
+//			return;
+//		}
+//
+//		if (this.ihdr.getInterlaceMethod() == 0) {
+//			byte[] filterMethods = new byte[this.ihdr.getHeight()];
+//			byte[][] pixels = new byte[this.ihdr.getHeight()][this.ihdr.getWidth() * bytesPerPixel];
+//
+//			for (int i = 0, index1 = 0, index2 = 0; i < this.decompressedData.length; i++) {
+//				if (i % (this.ihdr.getWidth() * bytesPerPixel + 1) == 0) {
+//					filterMethods[index1] = this.decompressedData[i];
+//					index1++;
+//					index2 = 0;
+//				} else {
+//					pixels[index1 - 1][index2] = this.decompressedData[i];
+//					index2++;
+//				}
+//			}
+//
+//			if (this.unfilter)
+//				pixels = Unfilter.unfilter(pixels, filterMethods, bytesPerPixel);
+//
+//			Color bkgda = new Color(255, 255, 255);
+//			if (this.hasBKGD()) {
+//				bkgda = this.getBKGD().getColor(this.ihdr.getBitDepth());
+//			}
+//			g.setColor(bkgda);
+//			g.fillRect(0, 0, (int) (pixels[0].length / bytesPerPixel * this.scale), (int) (pixels.length * this.scale));
+//
+//			for (int i = 0; i < pixels.length; i++) {
+//				for (int j = 0, x = 0; j < pixels[i].length; j += bytesPerPixel, x++) {
+//					bi.setRGB(x, i, getColor(this.ihdr.getColorType(), bytesPerPixel, pixels[i], j).getRGB());
+//				}
+//			}
+//		} else if (this.ihdr.getInterlaceMethod() == 1) { // Adam-7
+//			int[] widths = new int[7];
+//			int[] heights = new int[7];
+//			byte[][][] passes = new byte[7][][];
+//			byte[][] filterMethods = new byte[7][];
+//
+//			int pass = 0;
+//
+//			while (pass < 7) {
+//				widths[pass] = (int) Math
+//						.ceil((this.ihdr.getWidth() - starting_col[pass]) / (double) col_increment[pass]);
+//				heights[pass] = (int) Math
+//						.ceil((this.ihdr.getHeight() - starting_row[pass]) / (double) row_increment[pass]);
+//				passes[pass] = new byte[heights[pass]][widths[pass] * bytesPerPixel];
+//				filterMethods[pass] = new byte[heights[pass]];
+//
+//				pass++;
+//			}
+//
+//			pass = 0;
+//
+//			int szamlalo = 0;
+//			while (pass < 7) {
+//				for (int i = 0; i < passes[pass].length; i++) {
+//					filterMethods[pass][i] = this.decompressedData[szamlalo++];
+//					for (int j = 0; j < passes[pass][i].length; j += bytesPerPixel, szamlalo += bytesPerPixel) {
+//						for (int k = 0; k < bytesPerPixel; k++) {
+//							passes[pass][i][j + k] = this.decompressedData[szamlalo + k];
+//						}
+//					}
+//				}
+//				pass++;
+//			}
+//
+//			for (int i = 0; i < filterMethods.length; i++) {
+//				passes[i] = Unfilter.unfilter(passes[i], filterMethods[i], bytesPerPixel);
+//			}
+//
+//			pass = 0;
+//			int row, col;
+//
+//			while (pass < 7) {
+//				row = starting_row[pass];
+//				int i = 0;
+//				while (row < this.ihdr.getHeight()) {
+//					col = starting_col[pass];
+//					int j = 0;
+//					while (col < this.ihdr.getWidth()) {
+//						bi.setRGB(col, row,
+//								getColor(this.ihdr.getColorType(), bytesPerPixel, passes[pass][i], j).getRGB());
+//						col += col_increment[pass];
+//						j += bytesPerPixel;
+//					}
+//					row += row_increment[pass];
+//					i++;
+//				}
+//
+//				pass++;
+//			}
+//
+//		} else {
+//			Logger.error("Image.paint",
+//					String.format("Undefined interlace method: %d", this.ihdr.getInterlaceMethod()));
+//			return;
+//		}
 
 		g.drawImage(bi, 0, 0, (int) (this.ihdr.getWidth() * this.scale), (int) (this.ihdr.getHeight() * this.scale), 0,
 				0, bi.getWidth(), bi.getHeight(), null);
@@ -514,7 +647,40 @@ public class Image extends Component {
 
 	}
 
-	private static Color getColor(int colorType, int bytesPerPixel, byte[] pixels, int index) {
+	private Color getColor(int[] samples) {
+		switch (this.ihdr.getColorType()) {
+		case 0:
+			float g = (float) samples[0] / ((1 << this.ihdr.getBitDepth()) - 1);
+			return new Color(g, g, g);
+		case 2:
+			if (this.ihdr.getBitDepth() == 8) {
+				return new Color(samples[0], samples[1], samples[2]);
+			} else {
+				return new Color(samples[0] / 65535.0f, samples[1] / 65535.0f, samples[2] / 65535.0f);
+			}
+		case 3:
+			return this.plte.getColor(samples[0]);
+		case 4:
+			g = (float) samples[0] / ((1 << this.ihdr.getBitDepth()) - 1);
+			float a = (float) samples[1] / ((1 << this.ihdr.getBitDepth()) - 1);
+			return new Color(g, g, g, a);
+		case 6:
+			if (this.ihdr.getBitDepth() == 8) {
+				return new Color(samples[0], samples[1], samples[2], samples[3]);
+			} else {
+				return new Color(samples[0] / 65535.0f, samples[1] / 65535.0f, samples[2] / 65535.0f,
+						samples[3] / 65535.0f);
+			}
+		default:
+			System.err.println("HIBA! Ismeretlen szín típus!");
+			return null;
+		}
+	}
+
+	/**
+	 * Régi, statikus megoldás a színek megszerzésére
+	 */
+	public static Color getColor(int colorType, int bytesPerPixel, byte[] pixels, int index) {
 		switch (colorType) {
 		case 0:
 			if (bytesPerPixel == 1)

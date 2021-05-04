@@ -55,14 +55,15 @@ public class BKGD extends Chunk {
 				this.color = this.palette.getColor(this.content[0]);
 				break;
 			case 2:
-				float oszto = (float) (Math.pow(2, bitDepth) - 1);
+				float oszto = (float) ((1 << bitDepth) - 1);
 				float val = twoBytesToIntMSBFirst(this.content) / oszto;
 				this.color = new Color(val, val, val);
 				break;
 			case 6:
-				float r = twoBytesToIntMSBFirst(getArrayPart(this.content, 1)) / 65535.0f;
-				float g = twoBytesToIntMSBFirst(getArrayPart(this.content, 2, 3)) / 65535.0f;
-				float b = twoBytesToIntMSBFirst(getArrayPart(this.content, 4, 5)) / 65535.0f;
+				oszto = (float) ((1 << bitDepth) - 1);
+				float r = twoBytesToIntMSBFirst(getArrayPart(this.content, 1)) / oszto;
+				float g = twoBytesToIntMSBFirst(getArrayPart(this.content, 2, 3)) / oszto;
+				float b = twoBytesToIntMSBFirst(getArrayPart(this.content, 4, 5)) / oszto;
 				this.color = new Color(r, g, b);
 				break;
 			default:

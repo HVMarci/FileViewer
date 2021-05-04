@@ -1,9 +1,17 @@
-package hu.hvj.marci.gzreader;
+package hu.hvj.marci.global;
 
-public class MyBitSet {
+public class NormalBitSet {
 
-	private byte[] data = new byte[500];
-	private int bytePointer = 0, bitPointer = 0, endPointer = 0, size = 0;
+	private byte[] data;
+	private int bytePointer = 0, bitPointer = 7, endPointer = 0, size = 0;
+
+	public NormalBitSet(int length) {
+		this.data = new byte[length];
+	}
+
+	public NormalBitSet() {
+		this(500);
+	}
 
 	public void add(byte b) {
 		data[endPointer] = b;
@@ -12,7 +20,7 @@ public class MyBitSet {
 		if (endPointer == data.length) {
 			endPointer = 0;
 		}
-		if (size > 500 || size < 0) {
+		if (size > data.length * 8 || size < 0) {
 			System.err.println("BAJVANNN");
 		}
 	}
@@ -38,18 +46,24 @@ public class MyBitSet {
 				endPointer = elore;
 			}
 			size += b.length * 8;
-			if (size > 500 || size < 0) {
+			if (size > data.length * 8 || size < 0) {
 				System.err.println("BAJVANNN");
 			}
 		}
 	}
 
-	public int getLastBit() {
+	public void add(byte[][] b) {
+		for (int i = 0; i < b.length; i++) {
+			add(b[i]);
+		}
+	}
+
+	public int getFirstBit() {
 		int b = (data[bytePointer] >>> bitPointer) & 0b1;
-		bitPointer++;
+		bitPointer--;
 
-		if (bitPointer == 8) {
-			bitPointer = 0;
+		if (bitPointer == -1) {
+			bitPointer = 7;
 			bytePointer++;
 			if (bytePointer == data.length) {
 				bytePointer = 0;
@@ -64,12 +78,12 @@ public class MyBitSet {
 		return b;
 	}
 
-	public boolean getLast() {
+	public boolean getFirst() {
 		boolean b = ((data[bytePointer] >>> bitPointer) & 0b1) == 1;
-		bitPointer++;
+		bitPointer--;
 
-		if (bitPointer == 8) {
-			bitPointer = 0;
+		if (bitPointer == -1) {
+			bitPointer = 7;
 			bytePointer++;
 			if (bytePointer == data.length) {
 				bytePointer = 0;
@@ -84,19 +98,10 @@ public class MyBitSet {
 		return b;
 	}
 
-	public int getNextXBitIntegerLSBFirst(int x) {
+	public int getNextXBitInteger(int x) {
 		int szam = 0;
 		for (int i = 0; i < x; i++) {
-			int b = this.getLastBit();
-			szam |= b << i;
-		}
-		return szam;
-	}
-
-	public int getNextXBitIntegerMSBFirst(int x) {
-		int szam = 0;
-		for (int i = 0; i < x; i++) {
-			int b = this.getLastBit();
+			int b = this.getFirstBit();
 			szam <<= 1;
 			szam |= b;
 		}
@@ -104,10 +109,9 @@ public class MyBitSet {
 	}
 
 	public void nextByte() {
-		int maradek = 8 - bitPointer;
-		if (maradek != 8) {
-			size -= maradek;
-			bitPointer = 0;
+		if (bitPointer != 7) {
+			size -= bitPointer + 1;
+			bitPointer = 7;
 			bytePointer++;
 			if (bytePointer == data.length) {
 				bytePointer = 0;
@@ -123,7 +127,13 @@ public class MyBitSet {
 	}
 
 	public byte getNextByte() {
-		return (byte) getNextXBitIntegerLSBFirst(8);
+		return (byte) getNextXBitInteger(8);
+	}
+
+	@Override
+	public String toString() {
+		return "Size: " + size + "\nData.length: " + data.length + "\nbitPointer: " + bitPointer + "\nbytePointer: "
+				+ bytePointer;
 	}
 
 }

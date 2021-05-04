@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import javax.swing.JLabel;
 
+import hu.hvj.marci.global.ReversedBitSet;
 import hu.hvj.marci.global.Reader;
 
 public class Inflater {
@@ -25,7 +26,7 @@ public class Inflater {
 	public byte[] inflate(Reader is, JLabel txt) throws IOException {
 		long start = System.currentTimeMillis();
 		ArrayList<Byte> als = new ArrayList<Byte>();
-		MyBitSet bals = new MyBitSet();
+		ReversedBitSet bals = new ReversedBitSet();
 		boolean isLastBlock;
 		this.blockCount = 0;
 		this.blockTypes = new int[3];
