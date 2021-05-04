@@ -20,12 +20,12 @@ public class FileViewerMain {
 			return;
 		}
 
-//		File file = new File(String.join(" ", args));
+		File file = new File(String.join(" ", args));
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\ICOViewer\\aero_nesw.cur");
 //		File file = new File("C:\\Users\\marci\\OneDrive\\Pictures\\j-s billentyűzet másolata.png");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\hell.png");
 //		File file = new File("C:\\Users\\marci\\keve\\marciReadme\\master\\LOCAL\\titk\\cf.ico");
-		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\PNGSuite\\bgyn6a16.png");
+//		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\PNGSuite\\bgyn6a16.png");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\PNGViewer\\hell.png");
 //		File file = new File("C:\\Users\\marci\\java_erdekessegek\\SzenHidrogen\\gifek\\1.gif");
 //		File file = new File("C:\\Users\\marci\\Downloads\\anvil-parser-0.9.0.tar.gz");

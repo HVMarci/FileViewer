@@ -1,0 +1,7 @@
+﻿  Launcher.cpp
+Launcher.obj : error LNK2019: unresolved external symbol __imp__curl_easy_init referenced in function _main
+Launcher.obj : error LNK2019: unresolved external symbol __imp__curl_easy_setopt referenced in function _main
+Launcher.obj : error LNK2019: unresolved external symbol __imp__curl_easy_perform referenced in function _main
+Launcher.obj : error LNK2019: unresolved external symbol __imp__curl_easy_cleanup referenced in function _main
+C:\curl\builds\libcurl-vc-x64-release-static-ipv6-sspi-schannel\lib\libcurl_a.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'x86'
+C:\Users\marci\java_erdekessegek\FileViewer\Launcher\Debug\Launcher.exe : fatal error LNK1120: 4 unresolved externals
