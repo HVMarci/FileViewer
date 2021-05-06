@@ -1,9 +1,22 @@
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+
 #define CURL_STATICLIB
 
 #include <iostream>
 #include <curl\curl.h>
 #include <fstream>
 #include <string>
+#include <Windows.h>
+#include <shellapi.h>
+
+std::string GetCurrentDirectory()
+{
+	char buffer[MAX_PATH];
+	GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+
+	return std::string(buffer).substr(0, pos);
+}
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
@@ -12,7 +25,7 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
 }
 
 int main(int argc, char **argv) {
-	std::ifstream versionfile("version.txt");
+	std::ifstream versionfile(GetCurrentDirectory() + "\\version.txt");
 	int version;
 	bool isNewerVersion = false;
 
@@ -29,13 +42,14 @@ int main(int argc, char **argv) {
 			curl_easy_setopt(curl, CURLOPT_URL, "https://marci.hvj.hu/fileviewer/version.txt");
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-			curl_easy_perform(curl);
-			curl_easy_cleanup(curl);
-
-			int latestVersion = stoi(readBuffer);
-			if (isNewerVersion = latestVersion > version) {
-				std::cout << "There is a newer version! " << latestVersion << std::endl;
+			CURLcode res = curl_easy_perform(curl);
+			if (res == CURLE_OK) {
+				int latestVersion = stoi(readBuffer);
+				if (isNewerVersion = latestVersion > version) {
+					std::cout << "There is a newer version! " << latestVersion << std::endl;
+				}
 			}
+			curl_easy_cleanup(curl);
 		}
 		else {
 			std::cerr << "CURL error" << std::endl;
@@ -44,12 +58,20 @@ int main(int argc, char **argv) {
 
 	versionfile.close();
 
-	std::string command = "javaw -jar fileviewer.jar ";
-	for (int i = 1; i < argc; i++) {
+	if (isNewerVersion) {
+		int response = MessageBox(NULL, (LPCWSTR)L"Egy új verzió elérhetõ!\nSzeretné telepíteni?", (LPCWSTR)L"Frissítés", MB_YESNO | MB_ICONINFORMATION);
+		if (response == IDYES) {
+			ShellExecute(NULL, L"open", L"https://github.com/HVMarci/FileViewer/releases/latest", NULL, NULL, SW_SHOW);
+		}
+	}
+
+	std::string command = "javaw -jar \"" + GetCurrentDirectory() + "\\fileviewer.jar\" \"";
+	for (int i = 1; i < argc - 1; i++) {
 		command += argv[i];
 		command += " ";
 	}
-	command += isNewerVersion ? "true" : "false";
+	command += argv[argc - 1];
+	command += '"';
 	std::cout << "Starting command: " << command << std::endl;
 	system(command.c_str());
 
